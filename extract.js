@@ -217,9 +217,31 @@ async function main() {
     info('▶ Loading page...');
     emit({ type: 'phase', phase: 'mount' });
 
+    // Detect missing local files (incomplete zip export) early so we fail fast
+    // instead of waiting 90s for a Stage that will never mount.
+    const missingFiles = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        const t = msg.text();
+        if (t.includes('ERR_FILE_NOT_FOUND') || t.includes('net::ERR_FILE_NOT_FOUND')) {
+          // Extract the filename from the URL in the error
+          const m = t.match(/file:\/\/[^\s)]+/);
+          if (m) missingFiles.push(path.basename(decodeURIComponent(m[0])));
+        }
+      }
+    });
+
     // Boot can fail if unpkg.com is slow loading React/Babel. Retry once with a fresh navigation.
     const bootOnce = async (timeoutMs) => {
       await page.goto(fileUrl, { waitUntil: 'load', timeout: 60000 });
+      // Give the page 3s to surface file-not-found errors before waiting for Stage
+      await page.waitForTimeout(3000);
+      if (missingFiles.length > 0) {
+        throw new Error(
+          `Missing files in the zip: ${[...new Set(missingFiles)].join(', ')}\n` +
+          `Re-export from Claude Design and make sure the zip contains ALL .jsx files, not just the HTML.`
+        );
+      }
       await page.waitForFunction(() => window.__stageProps != null, { timeout: timeoutMs });
     };
     try {
