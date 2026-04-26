@@ -41,6 +41,29 @@ async function cachedFetch(url) {
   return buf;
 }
 
+// Pre-warm the CDN cache by scanning the HTML for external script src URLs
+// and downloading any that aren't cached yet — before the browser starts,
+// so the Playwright route handler never has to do a slow network fetch.
+async function prewarmCdnCache(htmlPath) {
+  const html = fs.readFileSync(htmlPath, 'utf8');
+  const CDN_RE = /https?:\/\/(unpkg\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com)[^\s"'>]+/g;
+  const urls = [...new Set(html.match(CDN_RE) || [])];
+  for (const url of urls) {
+    fs.mkdirSync(CDN_CACHE_DIR, { recursive: true });
+    const key = url.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120);
+    const file = path.join(CDN_CACHE_DIR, key);
+    if (!fs.existsSync(file)) {
+      try {
+        process.stderr.write(`  Caching ${url} …\n`);
+        const buf = await fetchUrl(url);
+        fs.writeFileSync(file, buf);
+      } catch (e) {
+        process.stderr.write(`  Warning: could not cache ${url}: ${e.message}\n`);
+      }
+    }
+  }
+}
+
 function installCdnInterceptor(page) {
   page.route(/unpkg\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com/, async (route) => {
     const url = route.request().url();
@@ -148,6 +171,12 @@ async function main() {
   emit({ type: 'start', input: inputHtml, output: outputMp4 });
 
   const initScript = fs.readFileSync(path.join(__dirname, 'page-init.js'), 'utf8');
+
+  // Download any CDN scripts the HTML needs before the browser starts,
+  // so the route handler never blocks on a slow network fetch.
+  info('▶ Checking CDN cache…');
+  emit({ type: 'phase', phase: 'cdn-cache' });
+  await prewarmCdnCache(inputHtml);
 
   const browser = await chromium.launch({
     headless: !args.headed,
