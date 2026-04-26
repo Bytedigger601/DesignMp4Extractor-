@@ -15,7 +15,6 @@
     "README.md"
   ],
   "scripts": {
-    "postinstall": "playwright install chromium",
     "extract": "node extract.js",
     "start": "node server.js",
     "ui": "node server.js"

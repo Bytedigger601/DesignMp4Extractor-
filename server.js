@@ -294,13 +294,36 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '127.0.0.1', () => {
+// Ensure Playwright's Chromium is installed before the first job runs.
+// This happens lazily on server start rather than as a postinstall step,
+// so `npx` and fresh installs don't time out during npm install.
+function ensureChromium() {
+  return new Promise((resolve) => {
+    const pw = spawn(process.execPath, ['node_modules/.bin/playwright', 'install', 'chromium'], {
+      cwd: ROOT, stdio: 'inherit',
+      // On Windows the .bin shim is a .cmd file
+      shell: process.platform === 'win32',
+    });
+    pw.on('close', (code) => {
+      if (code !== 0) console.warn('⚠ playwright install chromium exited', code, '— continuing anyway');
+      resolve();
+    });
+    pw.on('error', () => resolve()); // already installed / not found → continue
+  });
+}
+
+server.listen(PORT, '127.0.0.1', async () => {
   const url = `http://localhost:${PORT}`;
   console.log(`▶ Design MP4 Extractor UI: ${url}`);
-  // Auto-open
+  // Auto-open browser immediately — server is already accepting connections.
   const cmd = process.platform === 'win32' ? 'cmd'
             : process.platform === 'darwin' ? 'open'
             : 'xdg-open';
-  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
-  execFile(cmd, args, () => {});
+  const openArgs = process.platform === 'win32' ? ['/c', 'start', '', url] : [url];
+  execFile(cmd, openArgs, () => {});
+
+  // Install Chromium in the background (fast no-op if already installed).
+  console.log('▶ Checking Playwright Chromium…');
+  await ensureChromium();
+  console.log('▶ Ready.');
 });
