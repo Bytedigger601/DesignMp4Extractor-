@@ -171,6 +171,9 @@ const server = http.createServer(async (req, res) => {
 
   try {
     // Static
+    if (req.method === 'GET' && p === '/favicon.ico') {
+      res.writeHead(204); res.end(); return; // no favicon, no 404 noise
+    }
     if (req.method === 'GET' && (p === '/' || p === '/index.html')) {
       return sendFile(res, path.join(PUBLIC_DIR, 'index.html'), MIME['.html']);
     }
