@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Design → MP4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0a0c;
+    --panel: #131318;
+    --panel-2: #1a1a22;
+    --line: rgba(255,255,255,0.08);
+    --text: #e8e6e0;
+    --dim: rgba(232,230,224,0.55);
+    --dimmer: rgba(232,230,224,0.32);
+    --accent: oklch(78% 0.15 75);
+    --accent-soft: oklch(78% 0.15 75 / 0.18);
+    --danger: oklch(65% 0.20 25);
+    --good: oklch(72% 0.18 145);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text); font-family: 'Space Grotesk', system-ui, sans-serif; }
+  a { color: var(--accent); }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+  .app {
+    max-width: 880px; margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+  header {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  header h1 {
+    margin: 0; font-size: 28px; letter-spacing: -0.02em; font-weight: 600;
+  }
+  header h1 .arrow { color: var(--accent); }
+  header .sub { color: var(--dim); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; font-family: 'JetBrains Mono', monospace; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 16px;
+  }
+
+  .field { margin-bottom: 16px; }
+  .field:last-child { margin-bottom: 0; }
+  label {
+    display: block;
+    font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hint { color: var(--dimmer); font-size: 12px; margin-top: 4px; }
+
+  input[type="text"], input[type="number"], select {
+    width: 100%; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none; transition: border-color 120ms;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: var(--accent);
+  }
+  input.dropping {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  input.invalid { border-color: var(--danger); }
+
+  body.drag-active::before {
+    content: 'Drop .zip to upload';
+    position: fixed; inset: 12px;
+    border: 2px dashed var(--accent);
+    border-radius: 16px;
+    background: oklch(78% 0.15 75 / 0.06);
+    z-index: 9999; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .input-row { display: flex; gap: 8px; align-items: stretch; }
+  .input-row input[type="text"] { flex: 1; }
+  .file-btn {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 0 14px; font: inherit; font-size: 13px;
+    cursor: pointer; white-space: nowrap;
+  }
+  .file-btn:hover { background: rgba(255,255,255,0.05); border-color: var(--accent); }
+
+  .row { display: grid; gap: 12px; }
+  .row-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .row-2 { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 600px) {
+    .row-3, .row-2 { grid-template-columns: 1fr; }
+  }
+
+  .actions {
+    display: flex; gap: 10px; align-items: center;
+    margin-top: 8px;
+  }
+  button {
+    background: var(--panel-2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font: inherit; font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    transition: background 120ms, border-color 120ms;
+  }
+  button:hover:not(:disabled) { background: rgba(255,255,255,0.05); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  button.primary {
+    background: var(--accent); color: #1a1100; border-color: transparent;
+    font-weight: 600;
+  }
+  button.primary:hover:not(:disabled) { filter: brightness(1.1); }
+  button.danger { color: var(--danger); border-color: rgba(255,90,80,0.3); }
+  button.ghost { background: transparent; }
+
+  .progress-wrap {
+    background: var(--panel-2);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 12px;
+  }
+  .progress-row { display: flex; justify-content: space-between; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--dim); margin-bottom: 8px; }
+  .progress-row strong { color: var(--text); font-weight: 500; }
+  .bar {
+    height: 6px; background: rgba(255,255,255,0.08);
+    border-radius: 3px; overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%; background: var(--accent);
+    width: 0%; transition: width 200ms ease-out;
+    box-shadow: 0 0 8px var(--accent-soft);
+  }
+  .bar-fill.indeterminate {
+    width: 30%;
+    animation: slide 1.4s linear infinite;
+  }
+  @keyframes slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+  }
+
+  .caption-live {
+    margin-top: 14px;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: linear-gradient(180deg, var(--accent-soft), transparent);
+  }
+  .caption-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 6px;
+  }
+  .caption-text {
+    font-size: 18px; font-weight: 500; color: var(--text);
+    line-height: 1.3; min-height: 24px;
+    transition: opacity 200ms;
+  }
+
+  .log {
+    background: #050507;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    line-height: 1.6;
+  }
+  .log .ok { color: var(--good); }
+  .log .err { color: var(--danger); }
+  .log .info { color: var(--text); }
+
+  .result {
+    display: flex; gap: 12px; align-items: center;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .result .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .result .size { color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  video {
+    width: 100%; max-height: 480px; border-radius: 10px;
+    background: #000; margin-top: 12px;
+    display: block;
+  }
+
+  .stage-info {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    color: var(--dim);
+    margin-top: 6px;
+  }
+  .stage-info span strong { color: var(--text); }
+
+  .badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 4px; font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; font-family: 'JetBrains Mono', monospace;
+    background: rgba(255,255,255,0.05); color: var(--dim);
+    border: 1px solid var(--line);
+  }
+  .badge.live  { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .badge.done  { background: rgba(120,200,140,0.12); color: var(--good); border-color: transparent; }
+  .badge.error { background: rgba(255,90,80,0.12); color: var(--danger); border-color: transparent; }
+
+  details summary {
+    cursor: pointer;
+    color: var(--dim); font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 4px 0;
+    user-select: none;
+  }
+  details[open] summary { color: var(--text); margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Design <span class="arrow">→</span> MP4</h1>
+    <span class="sub" id="status-badge">idle</span>
+  </header>
+
+  <div class="panel">
+    <div class="field">
+      <label for="input">Source HTML</label>
+      <div class="input-row">
+        <input type="text" id="input" placeholder="C:\path\to\animation.html" autocomplete="off" spellcheck="false"/>
+        <button type="button" class="file-btn" id="pick-btn">Choose .zip…</button>
+        <input type="file" id="file-picker" accept=".zip,.html" style="display:none"/>
+      </div>
+      <div class="hint">Paste an absolute path, drop a Claude Design <code>.zip</code> anywhere on the page, or click <strong>Choose .zip…</strong>.</div>
+      <div class="stage-info" id="stage-info" style="display:none"></div>
+    </div>
+
+    <div class="field">
+      <label for="output">Output MP4 (optional)</label>
+      <input type="text" id="output" placeholder="auto: same name as input, .mp4" autocomplete="off" spellcheck="false"/>
+    </div>
+
+    <div class="row row-3">
+      <div class="field">
+        <label for="fps">FPS</label>
+        <select id="fps">
+          <option value="">auto (Stage)</option>
+          <option value="60">60</option>
+          <option value="30" selected>30</option>
+          <option value="24">24</option>
+        </select>
+        <div class="hint">30 ≈ 2× faster than 60</div>
+      </div>
+      <div class="field">
+        <label for="crf">Quality (CRF)</label>
+        <input type="number" id="crf" value="18" min="0" max="51" step="1"/>
+        <div class="hint">18 visually lossless · 23 web-friendly</div>
+      </div>
+      <div class="field">
+        <label for="scale">Output scale</label>
+        <input type="number" id="scale" value="1" min="0.1" max="2" step="0.1"/>
+        <div class="hint">0.5 → half-resolution output</div>
+      </div>
+    </div>
+
+    <details>
+      <summary>Advanced</summary>
+      <div class="row row-3">
+        <div class="field">
+          <label for="start">Start (sec)</label>
+          <input type="number" id="start" value="0" min="0" step="0.1"/>
+        </div>
+        <div class="field">
+          <label for="end">End (sec)</label>
+          <input type="number" id="end" placeholder="auto" min="0" step="0.1"/>
+        </div>
+        <div class="field">
+          <label for="format">Capture format</label>
+          <select id="format">
+            <option value="jpeg" selected>JPEG (fast)</option>
+            <option value="png">PNG (lossless)</option>
+          </select>
+        </div>
+      </div>
+    </details>
+
+    <div class="actions">
+      <button id="extract" class="primary">Extract MP4</button>
+      <button id="cancel" class="danger" style="display:none">Cancel</button>
+    </div>
+  </div>
+
+  <div class="panel" id="progress-panel" style="display:none">
+    <div class="progress-row">
+      <span><strong id="phase-text">Starting…</strong></span>
+      <span class="mono" id="rate-text"></span>
+    </div>
+    <div class="bar"><div class="bar-fill" id="bar-fill"></div></div>
+    <div class="progress-row" style="margin-top:8px;">
+      <span class="mono" id="frames-text"></span>
+      <span class="mono" id="eta-text"></span>
+    </div>
+    <div class="caption-live" id="caption-live" style="display:none">
+      <div class="caption-label">Now showing</div>
+      <div class="caption-text" id="caption-text"></div>
+    </div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="panel" id="result-panel" style="display:none">
+    <div class="result">
+      <div>
+        <div class="name" id="result-name"></div>
+        <div class="size" id="result-size"></div>
+      </div>
+      <button id="srt-btn" class="ghost" style="display:none">Download .srt</button>
+      <button id="open-folder" class="ghost">Show in folder</button>
+      <button id="play" class="primary">Play</button>
+    </div>
+    <video id="player" controls preload="metadata" style="display:none"></video>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  const state = { eventSource: null, jobOutput: null };
+
+  const inputEl = $('input');
+
+  async function uploadZip(f) {
+    const prev = inputEl.value;
+    inputEl.value = `Uploading ${f.name} (${fmtSize(f.size)})…`;
+    inputEl.disabled = true;
+    try {
+      const r = await fetch('/api/upload?name=' + encodeURIComponent(f.name), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: f,
+      });
+      const j = await r.json();
+      if (!r.ok || j.error) throw new Error(j.error || ('HTTP ' + r.status));
+      inputEl.value = j.path;
+    } catch (err) {
+      inputEl.value = prev;
+      inputEl.classList.add('invalid');
+      inputEl.placeholder = 'Upload failed: ' + err.message;
+    } finally {
+      inputEl.disabled = false;
+      checkInput();
+    }
+  }
+
+  async function handleDroppedFile(f) {
+    if (!f) return;
+    if (/\.zip$/i.test(f.name)) return uploadZip(f);
+    if (f.path) { inputEl.value = f.path; checkInput(); return; }
+    inputEl.classList.add('invalid');
+    inputEl.placeholder = 'Browsers block .html paths — please zip the folder and drop the .zip';
+    inputEl.focus();
+  }
+
+  // Window-wide drop zone — the small text input was easy to miss.
+  let dragDepth = 0;
+  window.addEventListener('dragenter', (e) => {
+    if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+    e.preventDefault();
+    dragDepth++;
+    document.body.classList.add('drag-active');
+  });
+  window.addEventListener('dragover', (e) => {
+    if (!e.dataTransfer || !Array.from(e.dataTransfer.types || []).includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragleave', (e) => {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (dragDepth === 0) document.body.classList.remove('drag-active');
+  });
+  window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove('drag-active');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    handleDroppedFile(f);
+  });
+
+  // File picker fallback — clicking is always reliable.
+  $('pick-btn').addEventListener('click', () => $('file-picker').click());
+  $('file-picker').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) handleDroppedFile(f);
+    e.target.value = '';
+  });
+  inputEl.addEventListener('input', () => {
+    inputEl.classList.remove('invalid');
+    debouncedCheck();
+  });
+
+  let checkTimer = null;
+  function debouncedCheck() {
+    clearTimeout(checkTimer);
+    checkTimer = setTimeout(checkInput, 300);
+  }
+
+  async function checkInput() {
+    const path = inputEl.value.trim();
+    if (!path) { hideStage(); return; }
+    try {
+      const r = await fetch('/api/check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path }) });
+      const j = await r.json();
+      if (!j.exists || !j.isFile) {
+        inputEl.classList.add('invalid');
+        hideStage();
+      } else {
+        inputEl.classList.remove('invalid');
+      }
+    } catch {}
+  }
+
+  function hideStage() {
+    $('stage-info').style.display = 'none';
+    $('stage-info').innerHTML = '';
+  }
+  function showStage(stage) {
+    $('stage-info').style.display = 'flex';
+    $('stage-info').innerHTML = `
+      <span><strong>${stage.width}×${stage.height}</strong> px</span>
+      <span><strong>${stage.duration}</strong> s</span>
+      <span><strong>${stage.fps || 60}</strong> fps</span>
+    `;
+  }
+
+  function setStatus(s, cls) {
+    const b = $('status-badge');
+    b.textContent = s;
+    b.className = 'badge ' + (cls || '');
+  }
+
+  function appendLog(text, cls) {
+    const log = $('log');
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = text;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function fmtSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+  }
+
+  function startExtract() {
+    const opts = {
+      input: inputEl.value.trim(),
+      output: $('output').value.trim() || null,
+      fps: $('fps').value ? Number($('fps').value) : null,
+      crf: Number($('crf').value),
+      scale: Number($('scale').value),
+      start: Number($('start').value) || 0,
+      end: $('end').value ? Number($('end').value) : null,
+      format: $('format').value,
+    };
+    if (!opts.input) { inputEl.focus(); return; }
+
+    $('progress-panel').style.display = 'block';
+    $('result-panel').style.display = 'none';
+    $('log').innerHTML = '';
+    $('bar-fill').style.width = '0%';
+    $('bar-fill').classList.add('indeterminate');
+    $('phase-text').textContent = 'Starting…';
+    $('frames-text').textContent = '';
+    $('eta-text').textContent = '';
+    $('rate-text').textContent = '';
+    $('extract').style.display = 'none';
+    $('cancel').style.display = '';
+    setStatus('running', 'live');
+
+    fetch('/api/extract', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(opts) })
+      .then(r => r.json())
+      .then(j => {
+        if (j.error) { onError(j.error); return; }
+        connectEvents();
+      })
+      .catch(err => onError(err.message));
+  }
+
+  function connectEvents() {
+    if (state.eventSource) state.eventSource.close();
+    const es = new EventSource('/api/events');
+    state.eventSource = es;
+    es.onmessage = (m) => {
+      let ev; try { ev = JSON.parse(m.data); } catch { return; }
+      handleEvent(ev);
+    };
+    es.onerror = () => { es.close(); };
+  }
+
+  function handleEvent(ev) {
+    switch (ev.type) {
+      case 'job-started':
+        appendLog('▶ Job started', 'info');
+        break;
+      case 'start':
+        appendLog('▶ Input:  ' + ev.input);
+        appendLog('▶ Output: ' + ev.output);
+        state.jobOutput = ev.output;
+        break;
+      case 'phase':
+        if (ev.phase === 'mount') $('phase-text').textContent = 'Loading animation…';
+        else if (ev.phase === 'encoding') {
+          $('phase-text').textContent = 'Encoding MP4…';
+          $('bar-fill').classList.add('indeterminate');
+          $('bar-fill').style.width = '';
+        }
+        break;
+      case 'stage':
+        showStage(ev);
+        appendLog(`▶ Stage detected: ${ev.width}×${ev.height} · ${ev.duration}s · ${ev.fps}fps`);
+        break;
+      case 'render-start':
+        $('phase-text').textContent = 'Rendering frames';
+        $('bar-fill').classList.remove('indeterminate');
+        appendLog(`▶ Rendering ${ev.totalFrames} frames at ${ev.fps}fps (${ev.format})`);
+        break;
+      case 'caption': {
+        const live = $('caption-live');
+        live.style.display = 'block';
+        const txt = $('caption-text');
+        txt.style.opacity = 0.4;
+        requestAnimationFrame(() => {
+          txt.textContent = ev.text;
+          txt.style.opacity = 1;
+        });
+        appendLog(`  [${ev.t.toFixed(1)}s] ${ev.text}`);
+        break;
+      }
+      case 'frame': {
+        const pct = ev.pct;
+        $('bar-fill').style.width = pct + '%';
+        $('frames-text').textContent = `frame ${ev.i} / ${ev.total}  (${pct.toFixed(0)}%)`;
+        $('rate-text').textContent = `${ev.fpsActual.toFixed(1)} fps`;
+        $('eta-text').textContent = `~${ev.etaSec.toFixed(0)}s left`;
+        break;
+      }
+      case 'done':
+        $('bar-fill').classList.remove('indeterminate');
+        $('bar-fill').style.width = '100%';
+        $('phase-text').textContent = 'Done';
+        $('frames-text').textContent = '';
+        $('eta-text').textContent = '';
+        appendLog('✓ ' + ev.output, 'ok');
+        if (ev.srt) appendLog('✓ ' + ev.srt, 'ok');
+        showResult(ev.output, ev.sizeBytes, ev.srt);
+        finishedUI();
+        setStatus('done', 'done');
+        break;
+      case 'error':
+        appendLog('✗ ' + ev.message, 'err');
+        finishedUI();
+        setStatus('error', 'error');
+        break;
+      case 'cancelled':
+        appendLog('• cancelled', 'err');
+        finishedUI();
+        setStatus('cancelled', 'error');
+        break;
+      case 'job-closed':
+        if (state.eventSource) { state.eventSource.close(); state.eventSource = null; }
+        break;
+    }
+  }
+
+  function finishedUI() {
+    $('extract').style.display = '';
+    $('cancel').style.display = 'none';
+  }
+
+  function showResult(filePath, size, srtPath) {
+    $('result-panel').style.display = 'block';
+    $('result-name').textContent = filePath;
+    $('result-size').textContent = fmtSize(size);
+    state.jobOutput = filePath;
+    state.jobSrt = srtPath || null;
+    $('srt-btn').style.display = srtPath ? '' : 'none';
+  }
+
+  function onError(msg) {
+    appendLog('✗ ' + msg, 'err');
+    finishedUI();
+    setStatus('error', 'error');
+  }
+
+  $('extract').addEventListener('click', startExtract);
+
+  $('cancel').addEventListener('click', () => {
+    fetch('/api/cancel', { method: 'POST' });
+  });
+
+  $('open-folder').addEventListener('click', () => {
+    if (!state.jobOutput) return;
+    fetch('/api/reveal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: state.jobOutput }) });
+  });
+
+  $('srt-btn').addEventListener('click', () => {
+    if (!state.jobSrt) return;
+    const a = document.createElement('a');
+    a.href = '/api/file?path=' + encodeURIComponent(state.jobSrt);
+    a.download = state.jobSrt.split(/[\\/]/).pop();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  });
+
+  $('play').addEventListener('click', () => {
+    if (!state.jobOutput) return;
+    const v = $('player');
+    v.src = '/api/file?path=' + encodeURIComponent(state.jobOutput) + '&t=' + Date.now();
+    v.style.display = 'block';
+    v.play().catch(() => {});
+  });
+
+  // Reconnect to in-flight job if the page reloads.
+  fetch('/api/status').then(r => r.json()).then(s => {
+    if (s.status === 'running') {
+      $('progress-panel').style.display = 'block';
+      $('extract').style.display = 'none';
+      $('cancel').style.display = '';
+      setStatus('running', 'live');
+      connectEvents();
+    } else if (s.status === 'done' && s.output) {
+      // pull last known output
+      fetch('/api/events').then(r => r.text()).then(() => {});
+    }
+  }).catch(() => {});
+</script>
+</body>
+</html>

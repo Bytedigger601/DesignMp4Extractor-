@@ -1,0 +1,21 @@
+node_modules/
+package-lock.json
+
+# Build/test artifacts
+extracted/
+*.mp4
+*.srt
+cap_test.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Env
+.env
+.env.local

@@ -1,0 +1,31 @@
+{
+  "name": "design-mp4-extractor",
+  "version": "1.0.0",
+  "description": "Extract Claude Design Stage animations to MP4 deterministically",
+  "main": "extract.js",
+  "bin": {
+    "design-mp4": "extract.js",
+    "design-mp4-ui": "server.js"
+  },
+  "files": [
+    "extract.js",
+    "server.js",
+    "page-init.js",
+    "public/",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "playwright install chromium",
+    "extract": "node extract.js",
+    "start": "node server.js",
+    "ui": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.17",
+    "ffmpeg-static": "^5.3.0",
+    "playwright": "^1.49.0"
+  }
+}
