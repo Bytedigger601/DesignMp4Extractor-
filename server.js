@@ -62,6 +62,7 @@ function startJob(opts) {
   if (opts.start) args.push('--start', String(opts.start));
   if (opts.end) args.push('--end', String(opts.end));
   if (opts.format) args.push('--format', opts.format);
+  if (!opts.captions) args.push('--no-captions');
 
   const proc = spawn(process.execPath, args, {
     cwd: ROOT,

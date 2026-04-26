@@ -106,7 +106,16 @@
 
   .actions {
     display: flex; gap: 10px; align-items: center;
-    margin-top: 8px;
+    margin-top: 8px; flex-wrap: wrap;
+  }
+  .toggle-label {
+    display: flex; align-items: center; gap: 7px;
+    color: var(--dim); font-size: 13px; cursor: pointer;
+    user-select: none; margin-left: 4px;
+  }
+  .toggle-label input[type="checkbox"] {
+    width: 15px; height: 15px; accent-color: var(--accent);
+    cursor: pointer;
   }
   button {
     background: var(--panel-2);
@@ -190,14 +199,17 @@
   .log .info { color: var(--text); }
 
   .result {
-    display: flex; gap: 12px; align-items: center;
+    display: flex; gap: 10px; align-items: center;
     padding: 14px 16px;
     background: rgba(255,255,255,0.03);
     border: 1px solid var(--line);
     border-radius: 10px;
   }
-  .result .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .result-info { flex: 1; min-width: 0; }
+  .result .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
   .result .size { color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  .result-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+  .result-actions button { white-space: nowrap; }
 
   video {
     width: 100%; max-height: 480px; border-radius: 10px;
@@ -306,6 +318,10 @@
     <div class="actions">
       <button id="extract" class="primary">Extract MP4</button>
       <button id="cancel" class="danger" style="display:none">Cancel</button>
+      <label class="toggle-label">
+        <input type="checkbox" id="captions-cb"/>
+        Generate .srt captions
+      </label>
     </div>
   </div>
 
@@ -328,13 +344,15 @@
 
   <div class="panel" id="result-panel" style="display:none">
     <div class="result">
-      <div>
+      <div class="result-info">
         <div class="name" id="result-name"></div>
         <div class="size" id="result-size"></div>
       </div>
-      <button id="srt-btn" class="ghost" style="display:none">Download .srt</button>
-      <button id="open-folder" class="ghost">Show in folder</button>
-      <button id="play" class="primary">Play</button>
+      <div class="result-actions">
+        <button id="srt-btn" class="ghost" style="display:none">Download .srt</button>
+        <button id="open-folder" class="ghost">Show in folder</button>
+        <button id="play" class="primary">Play</button>
+      </div>
     </div>
     <video id="player" controls preload="metadata" style="display:none"></video>
   </div>
@@ -478,6 +496,7 @@
       fps: $('fps').value ? Number($('fps').value) : null,
       crf: Number($('crf').value),
       scale: Number($('scale').value),
+      captions: $('captions-cb').checked,
       start: Number($('start').value) || 0,
       end: $('end').value ? Number($('end').value) : null,
       format: $('format').value,
