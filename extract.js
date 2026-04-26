@@ -7,8 +7,53 @@
 
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 const { spawn } = require('child_process');
 const { chromium } = require('playwright');
+
+// ── CDN cache ────────────────────────────────────────────────────────────────
+// Intercept unpkg/jsdelivr requests and serve from a local disk cache so
+// renders never depend on CDN availability or speed.
+const CDN_CACHE_DIR = path.join(__dirname, '.cdn-cache');
+
+function fetchUrl(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'design-mp4-extractor' } }, (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return fetchUrl(res.headers.location).then(resolve, reject);
+      }
+      if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+async function cachedFetch(url) {
+  fs.mkdirSync(CDN_CACHE_DIR, { recursive: true });
+  const key = url.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120);
+  const file = path.join(CDN_CACHE_DIR, key);
+  if (fs.existsSync(file)) return fs.readFileSync(file);
+  const buf = await fetchUrl(url);
+  fs.writeFileSync(file, buf);
+  return buf;
+}
+
+function installCdnInterceptor(page) {
+  page.route(/unpkg\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com/, async (route) => {
+    const url = route.request().url();
+    try {
+      const body = await cachedFetch(url);
+      const ct = url.endsWith('.css') ? 'text/css' : 'application/javascript';
+      await route.fulfill({ status: 200, contentType: ct, body });
+    } catch (e) {
+      // Cache miss + network fail → let it through so the page can try
+      await route.continue();
+    }
+  });
+}
 
 // Resolve ffmpeg: env override > ffmpeg-static (bundled) > "ffmpeg" on PATH.
 function resolveFfmpeg() {
@@ -125,6 +170,11 @@ async function main() {
     await context.addInitScript(initScript);
 
     const page = await context.newPage();
+    // Raise the default so Playwright's context-level cap doesn't override
+    // the explicit timeouts we pass to waitForFunction/goto below.
+    page.setDefaultTimeout(90000);
+    // Serve CDN scripts from local disk cache — eliminates unpkg flakiness.
+    installCdnInterceptor(page);
     page.on('pageerror', (err) => console.error('[page]', err.message));
     page.on('console', (msg) => {
       const t = msg.type();

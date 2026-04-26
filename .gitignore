@@ -1,6 +1,9 @@
 node_modules/
 package-lock.json
 
+# CDN cache (populated on first render, not committed)
+.cdn-cache/
+
 # Build/test artifacts
 extracted/
 *.mp4
